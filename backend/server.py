@@ -50,27 +50,289 @@ except Exception as e:
     print(f"⚠️ Could not load styles.csv: {e}")
     styles_df = pd.DataFrame()
 
-# Fashion item images mapping
+# Fashion item images mapping - Using reliable placeholder images
 FASHION_IMAGES = {
-    "Shirts": "https://images.unsplash.com/photo-1562157873-818bc0726f68",
-    "Jeans": "https://images.unsplash.com/photo-1655362258669-e230aacbd21b", 
-    "T-shirts": "https://images.pexels.com/photos/322207/pexels-photo-322207.jpeg",
-    "Casual Shirts": "https://images.pexels.com/photos/5217841/pexels-photo-5217841.jpeg",
-    "Dresses": "https://images.pexels.com/photos/985635/pexels-photo-985635.jpeg",
-    "Track Pants": "https://images.unsplash.com/photo-1655362258669-e230aacbd21b",
-    "Casual Shoes": "https://images.unsplash.com/photo-1560769629-975ec94e6a86",
-    "Handbags": "https://images.unsplash.com/photo-1492707892479-7bc8d5a4ee93",
-    "Watches": "https://images.unsplash.com/photo-1492707892479-7bc8d5a4ee93",
-    "Heels": "https://images.pexels.com/photos/32552778/pexels-photo-32552778.jpeg",
-    "Leather Belts": "https://images.unsplash.com/photo-1705873176985-85bb5788ef3a",
-    "Sneakers": "https://images.unsplash.com/photo-1560769629-975ec94e6a86",
-    "Blazers": "https://images.pexels.com/photos/5217841/pexels-photo-5217841.jpeg",
-    "default": "https://images.pexels.com/photos/322207/pexels-photo-322207.jpeg"
+    "Shirts": "https://via.placeholder.com/400x500/4A90E2/FFFFFF?text=Shirt",
+    "Jeans": "https://via.placeholder.com/400x500/2E86AB/FFFFFF?text=Jeans", 
+    "T-shirts": "https://via.placeholder.com/400x500/F24236/FFFFFF?text=T-Shirt",
+    "Casual Shirts": "https://via.placeholder.com/400x500/7B68EE/FFFFFF?text=Casual+Shirt",
+    "Dresses": "https://via.placeholder.com/400x500/FF69B4/FFFFFF?text=Dress",
+    "Track Pants": "https://via.placeholder.com/400x500/32CD32/FFFFFF?text=Track+Pants",
+    "Casual Shoes": "https://via.placeholder.com/400x500/8B4513/FFFFFF?text=Shoes",
+    "Handbags": "https://via.placeholder.com/400x500/DA70D6/FFFFFF?text=Handbag",
+    "Watches": "https://via.placeholder.com/400x500/FFD700/000000?text=Watch",
+    "Heels": "https://via.placeholder.com/400x500/DC143C/FFFFFF?text=Heels",
+    "Leather Belts": "https://via.placeholder.com/400x500/654321/FFFFFF?text=Belt",
+    "Sneakers": "https://via.placeholder.com/400x500/00CED1/FFFFFF?text=Sneakers",
+    "Blazers": "https://via.placeholder.com/400x500/191970/FFFFFF?text=Blazer",
+    "Tops": "https://via.placeholder.com/400x500/FF1493/FFFFFF?text=Top",
+    "Blouses": "https://via.placeholder.com/400x500/9370DB/FFFFFF?text=Blouse",
+    "Polo": "https://via.placeholder.com/400x500/228B22/FFFFFF?text=Polo",
+    "Hoodies": "https://via.placeholder.com/400x500/696969/FFFFFF?text=Hoodie",
+    "Skirts": "https://via.placeholder.com/400x500/FF6347/FFFFFF?text=Skirt",
+    "Shorts": "https://via.placeholder.com/400x500/20B2AA/FFFFFF?text=Shorts",
+    "Sweaters": "https://via.placeholder.com/400x500/9932CC/FFFFFF?text=Sweater",
+    "Chinos": "https://via.placeholder.com/400x500/D2691E/FFFFFF?text=Chinos",
+    "Tank Tops": "https://via.placeholder.com/400x500/FF4500/FFFFFF?text=Tank+Top",
+    "Henley": "https://via.placeholder.com/400x500/4682B4/FFFFFF?text=Henley",
+    "Flats": "https://via.placeholder.com/400x500/DDA0DD/FFFFFF?text=Flats",
+    "Sports Watches": "https://via.placeholder.com/400x500/000000/FFFFFF?text=Sports+Watch",
+    "Leggings": "https://via.placeholder.com/400x500/800080/FFFFFF?text=Leggings",
+    "Cardigans": "https://via.placeholder.com/400x500/B0C4DE/000000?text=Cardigan",
+    "Jackets": "https://via.placeholder.com/400x500/8B0000/FFFFFF?text=Jacket",
+    "default": "https://via.placeholder.com/400x500/708090/FFFFFF?text=Fashion+Item"
 }
 
 def get_item_image(article_type: str) -> str:
     """Get appropriate image for fashion item type"""
     return FASHION_IMAGES.get(article_type, FASHION_IMAGES["default"])
+
+def remove_shadows_and_enhance(image):
+    """Remove shadows and enhance skin tone detection using digital image processing"""
+    # Convert to LAB color space for better shadow removal
+    lab = cv2.cvtColor(image, cv2.COLOR_RGB2LAB)
+    l, a, b = cv2.split(lab)
+    
+    # Apply CLAHE (Contrast Limited Adaptive Histogram Equalization) to L channel
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+    l_enhanced = clahe.apply(l)
+    
+    # Merge back and convert to RGB
+    enhanced_lab = cv2.merge([l_enhanced, a, b])
+    enhanced_rgb = cv2.cvtColor(enhanced_lab, cv2.COLOR_LAB2RGB)
+    
+    # Apply bilateral filter to reduce noise while preserving edges
+    denoised = cv2.bilateralFilter(enhanced_rgb, 9, 75, 75)
+    
+    return denoised
+
+def detect_skin_region_advanced(face_img):
+    """Advanced skin detection excluding lips, eyes, hair using multiple methods"""
+    h, w = face_img.shape[:2]
+    
+    # Method 1: YCbCr skin detection (more robust)
+    ycbcr = cv2.cvtColor(face_img, cv2.COLOR_RGB2YCrCb)
+    
+    # Enhanced skin detection ranges in YCbCr
+    lower_skin = np.array([0, 133, 77], dtype=np.uint8)
+    upper_skin = np.array([255, 173, 127], dtype=np.uint8)
+    skin_mask1 = cv2.inRange(ycbcr, lower_skin, upper_skin)
+    
+    # Method 2: HSV skin detection
+    hsv = cv2.cvtColor(face_img, cv2.COLOR_RGB2HSV)
+    lower_skin_hsv = np.array([0, 20, 70], dtype=np.uint8)
+    upper_skin_hsv = np.array([20, 255, 255], dtype=np.uint8)
+    skin_mask2 = cv2.inRange(hsv, lower_skin_hsv, upper_skin_hsv)
+    
+    # Method 3: RGB-based detection
+    r, g, b = cv2.split(face_img)
+    rgb_mask = ((r > 95) & (g > 40) & (b > 20) & 
+                ((np.maximum(r, np.maximum(g, b)) - np.minimum(r, np.minimum(g, b))) > 15) &
+                (np.abs(r.astype(int) - g.astype(int)) > 15) & 
+                (r > g) & (r > b)).astype(np.uint8) * 255
+    
+    # Combine all masks
+    combined_mask = cv2.bitwise_and(skin_mask1, skin_mask2)
+    combined_mask = cv2.bitwise_and(combined_mask, rgb_mask)
+    
+    # Exclude eye and mouth regions (approximate locations)
+    # Eyes are typically in the upper 1/3, mouth in lower 1/4
+    eye_region_mask = np.ones_like(combined_mask)
+    eye_region_mask[int(h*0.25):int(h*0.55), :] = 0  # Exclude eye region
+    
+    mouth_region_mask = np.ones_like(combined_mask)
+    mouth_region_mask[int(h*0.75):, int(w*0.25):int(w*0.75)] = 0  # Exclude mouth region
+    
+    # Apply exclusion masks
+    skin_mask_clean = cv2.bitwise_and(combined_mask, eye_region_mask)
+    skin_mask_clean = cv2.bitwise_and(skin_mask_clean, mouth_region_mask)
+    
+    # Focus on cheek areas (most reliable for skin tone)
+    cheek_mask = np.zeros_like(combined_mask)
+    # Left cheek
+    cheek_mask[int(h*0.4):int(h*0.7), int(w*0.1):int(w*0.4)] = 255
+    # Right cheek  
+    cheek_mask[int(h*0.4):int(h*0.7), int(w*0.6):int(w*0.9)] = 255
+    # Forehead center
+    cheek_mask[int(h*0.2):int(h*0.4), int(w*0.3):int(w*0.7)] = 255
+    
+    # Combine with skin detection
+    final_mask = cv2.bitwise_and(skin_mask_clean, cheek_mask)
+    
+    # Morphological operations to clean up the mask
+    kernel = np.ones((3,3), np.uint8)
+    final_mask = cv2.morphologyEx(final_mask, cv2.MORPH_OPEN, kernel)
+    final_mask = cv2.morphologyEx(final_mask, cv2.MORPH_CLOSE, kernel)
+    
+    return final_mask
+
+def analyze_skin_tone_advanced(face_img, skin_mask):
+    """Advanced skin tone analysis from masked region"""
+    # Get skin pixels only
+    skin_pixels = face_img[skin_mask > 0]
+    
+    if len(skin_pixels) < 100:
+        # Fallback to center region if mask is too small
+        h, w = face_img.shape[:2]
+        center_region = face_img[int(h*0.3):int(h*0.7), int(w*0.3):int(w*0.7)]
+        skin_pixels = center_region.reshape(-1, 3)
+    
+    # Remove outliers using IQR method
+    def remove_outliers(data):
+        q1 = np.percentile(data, 25, axis=0)
+        q3 = np.percentile(data, 75, axis=0)
+        iqr = q3 - q1
+        lower_bound = q1 - 1.5 * iqr
+        upper_bound = q3 + 1.5 * iqr
+        
+        mask = np.all((data >= lower_bound) & (data <= upper_bound), axis=1)
+        return data[mask]
+    
+    cleaned_pixels = remove_outliers(skin_pixels)
+    
+    if len(cleaned_pixels) > 50:
+        # Use median instead of mean for more robust estimation
+        median_color = np.median(cleaned_pixels, axis=0).astype(int)
+        return median_color
+    else:
+        return np.mean(skin_pixels, axis=0).astype(int)
+
+def classify_skin_tone_detailed(rgb_color):
+    """Detailed skin tone classification with undertones"""
+    r, g, b = rgb_color
+    
+    # Calculate various color metrics
+    brightness = (r + g + b) / 3
+    
+    # Undertone analysis
+    red_ratio = r / max(g + b, 1)
+    yellow_ratio = (r + g) / max(2 * b, 1)
+    
+    # Determine undertone
+    if red_ratio > 1.1:
+        undertone = "warm"
+    elif yellow_ratio > 1.2:
+        undertone = "warm"
+    elif b > max(r, g):
+        undertone = "cool"
+    else:
+        undertone = "neutral"
+    
+    # Classify depth
+    if brightness > 200:
+        depth = "Very Fair"
+        if undertone == "cool":
+            colors = ["Pastels", "White", "Lavender", "Light Blue", "Pink", "Silver"]
+        else:
+            colors = ["Cream", "Peach", "Coral", "Light Yellow", "Gold", "Warm White"]
+    elif brightness > 170:
+        depth = "Fair"
+        if undertone == "cool":
+            colors = ["Rose", "Berry", "Emerald", "Navy", "Purple", "Cool Gray"]
+        else:
+            colors = ["Warm Pink", "Coral", "Orange", "Yellow", "Camel", "Warm Brown"]
+    elif brightness > 140:
+        depth = "Light-Medium"
+        if undertone == "cool":
+            colors = ["Teal", "Sapphire", "Magenta", "Cool Red", "Black", "White"]
+        else:
+            colors = ["Rust", "Olive", "Warm Red", "Orange", "Gold", "Chocolate"]
+    elif brightness > 110:
+        depth = "Medium"
+        if undertone == "cool":
+            colors = ["Royal Blue", "Purple", "Pink", "Cool Green", "Black", "Gray"]
+        else:
+            colors = ["Burnt Orange", "Olive", "Warm Green", "Burgundy", "Gold", "Brown"]
+    elif brightness > 80:
+        depth = "Medium-Deep"
+        if undertone == "cool":
+            colors = ["Jewel Tones", "Purple", "Blue", "Pink", "Black", "White"]
+        else:
+            colors = ["Earth Tones", "Rust", "Orange", "Yellow", "Burgundy", "Camel"]
+    else:
+        depth = "Deep"
+        if undertone == "cool":
+            colors = ["Bright Colors", "Purple", "Blue", "Pink", "White", "Silver"]
+        else:
+            colors = ["Rich Colors", "Orange", "Red", "Yellow", "Gold", "Copper"]
+    
+    return f"{depth} ({undertone})", colors
+
+def detect_skin_tone_advanced(face_img):
+    """Enhanced skin tone detection using advanced digital image processing"""
+    # Remove shadows and enhance the image
+    enhanced_img = remove_shadows_and_enhance(face_img)
+    
+    # Detect skin regions while excluding non-skin areas
+    skin_mask = detect_skin_region_advanced(enhanced_img)
+    
+    # Analyze skin tone from the clean mask
+    skin_color = analyze_skin_tone_advanced(enhanced_img, skin_mask)
+    
+    return skin_color
+
+def detect_skin_tone(image_bytes: bytes) -> tuple:
+    """Enhanced skin tone detection with advanced image processing"""
+    try:
+        # Convert bytes to numpy array
+        nparr = np.frombuffer(image_bytes, np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        if img is None:
+            raise HTTPException(status_code=400, detail="Invalid image format. Please use JPG, PNG, or GIF.")
+        
+        # Face detection with multiple scale factors
+        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        
+        # Apply histogram equalization for better face detection
+        gray_eq = cv2.equalizeHist(gray)
+        
+        # Try multiple detection parameters
+        faces = face_cascade.detectMultiScale(gray_eq, 1.1, 5, minSize=(50, 50), maxSize=(500, 500))
+        if len(faces) == 0:
+            faces = face_cascade.detectMultiScale(gray, 1.05, 3, minSize=(30, 30))
+        if len(faces) == 0:
+            faces = face_cascade.detectMultiScale(gray, 1.3, 4, minSize=(80, 80))
+            
+        if len(faces) == 0:
+            raise HTTPException(status_code=400, detail="No face detected. Please use a clear, well-lit photo showing your face clearly.")
+        
+        # Use the largest detected face
+        largest_face = max(faces, key=lambda f: f[2] * f[3])
+        x, y, w, h = largest_face
+        
+        # Crop face with minimal padding to focus on facial skin
+        padding_x = int(w * 0.05)  # Reduced padding
+        padding_y = int(h * 0.05)
+        x1 = max(0, x + padding_x)
+        y1 = max(0, y + padding_y)
+        x2 = min(img.shape[1], x + w - padding_x)
+        y2 = min(img.shape[0], y + h - padding_y)
+        
+        face_img = img[y1:y2, x1:x2]
+        face_rgb = cv2.cvtColor(face_img, cv2.COLOR_BGR2RGB)
+        
+        # Enhanced skin tone detection
+        final_color = detect_skin_tone_advanced(face_rgb)
+        
+        # Convert to hex
+        hex_color = "#{:02x}{:02x}{:02x}".format(*final_color)
+        
+        # Detailed classification
+        skin_description, recommended_colors = classify_skin_tone_detailed(final_color)
+        
+        print(f"Advanced skin tone analysis: {skin_description}, RGB: {final_color}, Hex: {hex_color}")
+        print(f"Recommended colors: {recommended_colors}")
+        
+        return hex_color, recommended_colors
+        
+    except Exception as e:
+        print(f"Error in advanced skin tone detection: {e}")
+        if "No face detected" in str(e) or "Invalid image" in str(e):
+            raise e
+        else:
+            raise HTTPException(status_code=500, detail="Error processing image. Please try with a different photo with good lighting.")
 
 # Models
 class User(BaseModel):
@@ -147,145 +409,6 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         return User(**user)
     except jwt.PyJWTError:
         raise HTTPException(status_code=401, detail="Invalid authentication credentials")
-
-def closest_hex_color(hex_code: str, candidates: List[str]) -> str:
-    """Find the closest hex color from candidates"""
-    def hex_distance(h1: str, h2: str) -> float:
-        h1_rgb = [int(h1[i:i+2], 16) for i in (1, 3, 5)]
-        h2_rgb = [int(h2[i:i+2], 16) for i in (1, 3, 5)]
-        return sum((c1 - c2) ** 2 for c1, c2 in zip(h1_rgb, h2_rgb))
-    
-    return min(candidates, key=lambda h: hex_distance(hex_code, h))
-
-def detect_skin_tone_ycbcr(face_img):
-    """Enhanced skin tone detection using YCbCr color space"""
-    # Convert to YCbCr color space
-    ycbcr = cv2.cvtColor(face_img, cv2.COLOR_RGB2YCrCb)
-    
-    # Define skin tone ranges in YCbCr space
-    # These ranges are more robust for different lighting conditions
-    lower_skin = np.array([0, 133, 77], dtype=np.uint8)
-    upper_skin = np.array([255, 173, 127], dtype=np.uint8)
-    
-    # Create mask for skin pixels
-    skin_mask = cv2.inRange(ycbcr, lower_skin, upper_skin)
-    
-    # Get skin pixels
-    skin_pixels = face_img[skin_mask > 0]
-    
-    if len(skin_pixels) > 100:  # Ensure we have enough skin pixels
-        # Calculate mean RGB values of skin pixels
-        mean_color = np.mean(skin_pixels, axis=0).astype(int)
-        return mean_color
-    else:
-        # Fallback to center region if skin detection fails
-        h, w = face_img.shape[:2]
-        center_region = face_img[h//3:2*h//3, w//3:2*w//3]
-        return np.mean(center_region.reshape(-1, 3), axis=0).astype(int)
-
-def classify_skin_tone(rgb_color):
-    """Classify skin tone into categories based on RGB values"""
-    r, g, b = rgb_color
-    
-    # Calculate skin tone metrics
-    brightness = (r + g + b) / 3
-    redness = r - ((g + b) / 2)
-    yellowness = (r + g) / 2 - b
-    
-    # Classify based on brightness and undertones
-    if brightness > 200:
-        return "Fair", ["Pastels", "White", "Lavender", "Light Blue", "Pink"]
-    elif brightness > 160:
-        return "Light", ["Teal", "Pink", "Red", "Cream", "Gold", "Coral"]
-    elif brightness > 120:
-        return "Medium", ["Sea Green", "Turquoise", "Peach", "Rose", "White", "Navy"]
-    elif brightness > 80:
-        return "Tan", ["Beige", "Off White", "Sea Green", "Cream", "Burgundy"]
-    else:
-        return "Deep", ["Navy Blue", "Black", "Charcoal", "Burgundy", "Olive", "Emerald"]
-
-def detect_skin_tone(image_bytes: bytes) -> tuple:
-    """Enhanced skin tone detection using multiple methods"""
-    try:
-        # Convert bytes to numpy array
-        nparr = np.frombuffer(image_bytes, np.uint8)
-        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        
-        # Face detection with multiple scale factors for better detection
-        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        
-        # Try multiple parameters for better face detection
-        faces = face_cascade.detectMultiScale(gray, 1.1, 4, minSize=(30, 30))
-        if len(faces) == 0:
-            faces = face_cascade.detectMultiScale(gray, 1.05, 3, minSize=(20, 20))
-        if len(faces) == 0:
-            faces = face_cascade.detectMultiScale(gray, 1.3, 5, minSize=(50, 50))
-            
-        if len(faces) == 0:
-            raise HTTPException(status_code=400, detail="No face detected in the image. Please use a clear photo with good lighting.")
-        
-        # Use the largest detected face
-        largest_face = max(faces, key=lambda f: f[2] * f[3])
-        x, y, w, h = largest_face
-        
-        # Crop face with some padding
-        padding = int(min(w, h) * 0.1)
-        x1 = max(0, x - padding)
-        y1 = max(0, y - padding)
-        x2 = min(img.shape[1], x + w + padding)
-        y2 = min(img.shape[0], y + h + padding)
-        
-        face_img = img[y1:y2, x1:x2]
-        face_rgb = cv2.cvtColor(face_img, cv2.COLOR_BGR2RGB)
-        
-        # Method 1: Enhanced YCbCr-based detection
-        ycbcr_color = detect_skin_tone_ycbcr(face_rgb)
-        
-        # Method 2: Improved K-means clustering
-        resized_face = cv2.resize(face_rgb, (150, 150))
-        pixels = resized_face.reshape((-1, 3))
-        
-        # Remove outliers (very dark or very bright pixels)
-        brightness = np.mean(pixels, axis=1)
-        mask = (brightness > 30) & (brightness < 240)
-        filtered_pixels = pixels[mask]
-        
-        if len(filtered_pixels) > 50:
-            kmeans = KMeans(n_clusters=4, random_state=42, n_init=10).fit(filtered_pixels)
-            centers = kmeans.cluster_centers_
-            
-            # Choose the cluster center that's most likely skin tone
-            # (avoid very dark or very light clusters)
-            skin_candidates = []
-            for center in centers:
-                brightness = np.mean(center)
-                if 60 < brightness < 220:
-                    skin_candidates.append(center)
-            
-            if skin_candidates:
-                kmeans_color = min(skin_candidates, key=lambda c: abs(np.mean(c) - 140)).astype(int)
-            else:
-                kmeans_color = centers[0].astype(int)
-        else:
-            kmeans_color = ycbcr_color
-        
-        # Combine both methods for better accuracy
-        final_color = ((ycbcr_color.astype(float) + kmeans_color.astype(float)) / 2).astype(int)
-        
-        # Convert to hex
-        hex_color = "#{:02x}{:02x}{:02x}".format(*final_color)
-        
-        # Classify skin tone
-        skin_type, recommended_colors = classify_skin_tone(final_color)
-        
-        print(f"Detected skin tone: {skin_type}, RGB: {final_color}, Hex: {hex_color}")
-        
-        return hex_color, recommended_colors
-        
-    except Exception as e:
-        print(f"Error in skin tone detection: {e}")
-        raise HTTPException(status_code=500, detail="Error processing image. Please try with a different photo.")
 
 # Authentication routes
 @api_router.post("/auth/signup", response_model=dict)
