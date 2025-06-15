@@ -199,12 +199,9 @@ const OutfitRecommendations = () => {
                   {/* Product Image */}
                   <div className="image-container h-80">
                     <img
-                      src={item.image_url || 'https://images.pexels.com/photos/322207/pexels-photo-322207.jpeg'}
+                      src={item.image_url}
                       alt={item.product_name}
                       className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.target.src = 'https://images.pexels.com/photos/322207/pexels-photo-322207.jpeg';
-                      }}
                     />
                     <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-10 transition-all duration-300"></div>
                   </div>
