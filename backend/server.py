@@ -382,7 +382,9 @@ async def get_outfit_recommendations(
             season=item['season'],
             usage=item['usage']
         )
-        recommendations.append(recommendation)
+        recommendations.append(recommendation.dict())
+        # Add image URL to the recommendation
+        recommendations[-1]['image_url'] = get_item_image(item['articleType'])
     
     return {"recommendations": recommendations}
 
