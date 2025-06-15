@@ -144,42 +144,135 @@ def closest_hex_color(hex_code: str, candidates: List[str]) -> str:
     
     return min(candidates, key=lambda h: hex_distance(hex_code, h))
 
+def detect_skin_tone_ycbcr(face_img):
+    """Enhanced skin tone detection using YCbCr color space"""
+    # Convert to YCbCr color space
+    ycbcr = cv2.cvtColor(face_img, cv2.COLOR_RGB2YCrCb)
+    
+    # Define skin tone ranges in YCbCr space
+    # These ranges are more robust for different lighting conditions
+    lower_skin = np.array([0, 133, 77], dtype=np.uint8)
+    upper_skin = np.array([255, 173, 127], dtype=np.uint8)
+    
+    # Create mask for skin pixels
+    skin_mask = cv2.inRange(ycbcr, lower_skin, upper_skin)
+    
+    # Get skin pixels
+    skin_pixels = face_img[skin_mask > 0]
+    
+    if len(skin_pixels) > 100:  # Ensure we have enough skin pixels
+        # Calculate mean RGB values of skin pixels
+        mean_color = np.mean(skin_pixels, axis=0).astype(int)
+        return mean_color
+    else:
+        # Fallback to center region if skin detection fails
+        h, w = face_img.shape[:2]
+        center_region = face_img[h//3:2*h//3, w//3:2*w//3]
+        return np.mean(center_region.reshape(-1, 3), axis=0).astype(int)
+
+def classify_skin_tone(rgb_color):
+    """Classify skin tone into categories based on RGB values"""
+    r, g, b = rgb_color
+    
+    # Calculate skin tone metrics
+    brightness = (r + g + b) / 3
+    redness = r - ((g + b) / 2)
+    yellowness = (r + g) / 2 - b
+    
+    # Classify based on brightness and undertones
+    if brightness > 200:
+        return "Fair", ["Pastels", "White", "Lavender", "Light Blue", "Pink"]
+    elif brightness > 160:
+        return "Light", ["Teal", "Pink", "Red", "Cream", "Gold", "Coral"]
+    elif brightness > 120:
+        return "Medium", ["Sea Green", "Turquoise", "Peach", "Rose", "White", "Navy"]
+    elif brightness > 80:
+        return "Tan", ["Beige", "Off White", "Sea Green", "Cream", "Burgundy"]
+    else:
+        return "Deep", ["Navy Blue", "Black", "Charcoal", "Burgundy", "Olive", "Emerald"]
+
 def detect_skin_tone(image_bytes: bytes) -> tuple:
-    """Detect skin tone using K-means clustering"""
+    """Enhanced skin tone detection using multiple methods"""
     try:
         # Convert bytes to numpy array
         nparr = np.frombuffer(image_bytes, np.uint8)
         img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
         
-        # Face detection
+        # Face detection with multiple scale factors for better detection
         face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        faces = face_cascade.detectMultiScale(gray, 1.1, 4)
         
+        # Try multiple parameters for better face detection
+        faces = face_cascade.detectMultiScale(gray, 1.1, 4, minSize=(30, 30))
         if len(faces) == 0:
-            raise HTTPException(status_code=400, detail="No face detected in the image")
+            faces = face_cascade.detectMultiScale(gray, 1.05, 3, minSize=(20, 20))
+        if len(faces) == 0:
+            faces = face_cascade.detectMultiScale(gray, 1.3, 5, minSize=(50, 50))
+            
+        if len(faces) == 0:
+            raise HTTPException(status_code=400, detail="No face detected in the image. Please use a clear photo with good lighting.")
         
-        # Crop face
-        x, y, w, h = faces[0]
-        face_img = img[y:y+h, x:x+w]
+        # Use the largest detected face
+        largest_face = max(faces, key=lambda f: f[2] * f[3])
+        x, y, w, h = largest_face
+        
+        # Crop face with some padding
+        padding = int(min(w, h) * 0.1)
+        x1 = max(0, x - padding)
+        y1 = max(0, y - padding)
+        x2 = min(img.shape[1], x + w + padding)
+        y2 = min(img.shape[0], y + h + padding)
+        
+        face_img = img[y1:y2, x1:x2]
         face_rgb = cv2.cvtColor(face_img, cv2.COLOR_BGR2RGB)
-        resized_face = cv2.resize(face_rgb, (100, 100))
         
-        # K-means clustering for dominant color
+        # Method 1: Enhanced YCbCr-based detection
+        ycbcr_color = detect_skin_tone_ycbcr(face_rgb)
+        
+        # Method 2: Improved K-means clustering
+        resized_face = cv2.resize(face_rgb, (150, 150))
         pixels = resized_face.reshape((-1, 3))
-        kmeans = KMeans(n_clusters=3, random_state=42, n_init=10).fit(pixels)
-        dominant = kmeans.cluster_centers_[0].astype(int)
-        hex_color = "#{:02x}{:02x}{:02x}".format(*dominant)
         
-        # Find closest match and get recommendations
-        available_hexes = list(SKIN_TONE_TO_COLOR_MAPPING.keys())
-        closest_match = closest_hex_color(hex_color, available_hexes)
-        recommended_colors = SKIN_TONE_TO_COLOR_MAPPING.get(closest_match, ["Black", "White", "Beige", "Cream"])
+        # Remove outliers (very dark or very bright pixels)
+        brightness = np.mean(pixels, axis=1)
+        mask = (brightness > 30) & (brightness < 240)
+        filtered_pixels = pixels[mask]
+        
+        if len(filtered_pixels) > 50:
+            kmeans = KMeans(n_clusters=4, random_state=42, n_init=10).fit(filtered_pixels)
+            centers = kmeans.cluster_centers_
+            
+            # Choose the cluster center that's most likely skin tone
+            # (avoid very dark or very light clusters)
+            skin_candidates = []
+            for center in centers:
+                brightness = np.mean(center)
+                if 60 < brightness < 220:
+                    skin_candidates.append(center)
+            
+            if skin_candidates:
+                kmeans_color = min(skin_candidates, key=lambda c: abs(np.mean(c) - 140)).astype(int)
+            else:
+                kmeans_color = centers[0].astype(int)
+        else:
+            kmeans_color = ycbcr_color
+        
+        # Combine both methods for better accuracy
+        final_color = ((ycbcr_color.astype(float) + kmeans_color.astype(float)) / 2).astype(int)
+        
+        # Convert to hex
+        hex_color = "#{:02x}{:02x}{:02x}".format(*final_color)
+        
+        # Classify skin tone
+        skin_type, recommended_colors = classify_skin_tone(final_color)
+        
+        print(f"Detected skin tone: {skin_type}, RGB: {final_color}, Hex: {hex_color}")
         
         return hex_color, recommended_colors
+        
     except Exception as e:
         print(f"Error in skin tone detection: {e}")
-        raise HTTPException(status_code=500, detail="Error processing image")
+        raise HTTPException(status_code=500, detail="Error processing image. Please try with a different photo.")
 
 # Authentication routes
 @api_router.post("/auth/signup", response_model=dict)
