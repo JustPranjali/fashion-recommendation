@@ -120,7 +120,7 @@ const Favorites = () => {
                     {/* Product Image */}
                     <div className="image-container h-80">
                       <img
-                        src="https://images.pexels.com/photos/322207/pexels-photo-322207.jpeg"
+                        src="https://via.placeholder.com/400x500/708090/FFFFFF?text=Fashion+Item"
                         alt={favorite.product_name}
                         className="w-full h-full object-cover"
                       />
