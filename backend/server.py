@@ -50,14 +50,27 @@ except Exception as e:
     print(f"⚠️ Could not load styles.csv: {e}")
     styles_df = pd.DataFrame()
 
-# Skin tone to color mapping
-SKIN_TONE_TO_COLOR_MAPPING = {
-    "#373028": ["Navy Blue", "Black", "Charcoal", "Burgundy", "Olive"],
-    "#E5C8A6": ["Teal", "Pink", "Red", "Cream", "Gold"],
-    "#FBF2F3": ["Pastels", "White", "Lavender", "Light Blue"],
-    "#BEA07E": ["Sea Green", "Turquoise", "Peach", "Rose", "White"],
-    "#81654F": ["Beige", "Off White", "Sea Green", "Cream"]
+# Fashion item images mapping
+FASHION_IMAGES = {
+    "Shirts": "https://images.unsplash.com/photo-1562157873-818bc0726f68",
+    "Jeans": "https://images.unsplash.com/photo-1655362258669-e230aacbd21b", 
+    "T-shirts": "https://images.pexels.com/photos/322207/pexels-photo-322207.jpeg",
+    "Casual Shirts": "https://images.pexels.com/photos/5217841/pexels-photo-5217841.jpeg",
+    "Dresses": "https://images.pexels.com/photos/985635/pexels-photo-985635.jpeg",
+    "Track Pants": "https://images.unsplash.com/photo-1655362258669-e230aacbd21b",
+    "Casual Shoes": "https://images.unsplash.com/photo-1560769629-975ec94e6a86",
+    "Handbags": "https://images.unsplash.com/photo-1492707892479-7bc8d5a4ee93",
+    "Watches": "https://images.unsplash.com/photo-1492707892479-7bc8d5a4ee93",
+    "Heels": "https://images.pexels.com/photos/32552778/pexels-photo-32552778.jpeg",
+    "Leather Belts": "https://images.unsplash.com/photo-1705873176985-85bb5788ef3a",
+    "Sneakers": "https://images.unsplash.com/photo-1560769629-975ec94e6a86",
+    "Blazers": "https://images.pexels.com/photos/5217841/pexels-photo-5217841.jpeg",
+    "default": "https://images.pexels.com/photos/322207/pexels-photo-322207.jpeg"
 }
+
+def get_item_image(article_type: str) -> str:
+    """Get appropriate image for fashion item type"""
+    return FASHION_IMAGES.get(article_type, FASHION_IMAGES["default"])
 
 # Models
 class User(BaseModel):
