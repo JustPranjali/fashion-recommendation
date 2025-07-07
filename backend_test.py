@@ -7,8 +7,7 @@ from io import BytesIO
 from PIL import Image
 import numpy as np
 
-# Get the backend URL from the frontend .env file
-BACKEND_URL = "https://55e95dbc-8472-4edb-a536-d9647a0d8464.preview.emergentagent.com"
+BACKEND_URL = "http://localhost:8001"
 API_URL = f"{BACKEND_URL}/api"
 
 class FashionRecommendationAPITest(unittest.TestCase):
